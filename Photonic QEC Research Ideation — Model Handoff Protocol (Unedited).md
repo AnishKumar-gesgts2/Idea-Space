@@ -1228,3 +1228,428 @@ The desired standard is:
 > “This asks a legitimate unanswered question in quantum photonics/QEC, uses the simulator combination for a scientifically necessary reason, produces falsifiable computational results, and could become a credible research paper if executed rigorously.”
 
 Generate ideas accordingly.
+
+---
+
+# 17. New literature and criticism from this iteration
+
+## Scope and confidence
+
+This is a targeted literature pass, not a claim of exhaustive systematic review. The search emphasized 2023--2025 work and checked foundational software papers and documentation where needed. The date matters: software capabilities and preprints can change quickly, and a final paper proposal must repeat the search immediately before starting the project.
+
+Relevant anchors found during this pass include:
+
+- Stim and PyMatching remain a standard scalable workflow for stabilizer sampling, detector error models, and matching-based decoding. The relevant scientific limitation is not the existence of this workflow; it is whether a physically derived model is sufficient for the logical question.
+- Sparse Blossom made large matching simulations practical: Oscar Higgott, "Sparse Blossom: correcting a million errors per second," arXiv:2303.15933, https://arxiv.org/abs/2303.15933.
+- Hardware-specific and correlated-noise decoding is an active area. For example, decoding-graph reweighting for drifted/correlated noise was studied in arXiv:2311.16214, https://arxiv.org/abs/2311.16214. This makes "learn a better decoder from data" a weak novelty claim by itself.
+- Recent photonic work continues to study tailored fusion-based schemes and realistic loss/distinguishability tradeoffs. A useful recent anchor is "Tailoring Fusion-Based Photonic Quantum Computing Schemes to Quantum Hardware," PRX Quantum 6, 020304 (2025), https://link.aps.org/doi/10.1103/PRXQuantum.6.020304.
+- Integrated photonic demonstrations already show that photonic error correction and fault-tolerant measurement primitives are experimentally meaningful, not merely hypothetical: "Encoding Error Correction in an Integrated Photonic Chip," PRX Quantum 4, 030340 (2023), https://journals.aps.org/prxquantum/pdf/10.1103/PRXQuantum.4.030340.
+- Leakage is recognized as a distinct QEC problem rather than an ordinary Pauli channel. A representative recent reference is "Overcoming leakage in quantum error correction," Nature Physics (2023), https://www.nature.com/articles/s41567-023-02226-w.
+- Bosonic QEC tooling is expanding. IBM's Bosonic Qiskit overview is useful for mapping the neighboring landscape, but it is not evidence that a particular photonic-to-Stim compiler has already been solved: https://www.ibm.com/quantum/blog/bosonic-error-correction.
+- Quantum error cancellation for photonic loss (arXiv:2403.05252) shows that loss and non-Gaussian optical effects remain active topics, but it addresses mitigation rather than the proposed logical-model reduction: https://arxiv.org/abs/2403.05252.
+
+### Consequence for the active compiler
+
+The broad statement "build a Strawberry Fields to Stim interface" is not a publishable research question. Device-informed detector models, correlated decoding, and automated DEM generation are already active. The defensible question is narrower:
+
+> For a specified photonic primitive and code family, what is the smallest effective fault model that preserves the logical observables of the full microscopic simulation within a measured error tolerance, and in which physical regimes do standard independent-erasure or Pauli approximations fail?
+
+This turns software plumbing into a falsifiable model-reduction study. The novelty boundary is the measured sufficiency/error tradeoff, especially for higher-Fock-number events, hidden faults, and context-dependent correlations that cannot be represented by a single marginal loss rate.
+
+### Assessment of Idea 3
+
+**Strong if reframed; weak if presented as an API project.** The active compiler has high simulator-integration strength and a clear science-fair story. Its main risk is that a full Fock-space-to-stabilizer mapping is not unique: the same optical outcome can correspond to different logical faults depending on encoding, circuit location, feed-forward rule, and decoder. The project must therefore define one primitive, one code family, one fault-injection convention, and one error metric before making broad claims.
+
+The most important deliverable should be a Pareto curve:
+
+$$
+\text{model complexity}
+\quad\longleftrightarrow\quad
+\left|P_L^{\rm full}-P_L^{\rm reduced}\right|.
+$$
+
+That curve is scientifically more valuable than a large software package.
+
+---
+
+# 18. New candidate projects
+
+The candidates below are intentionally narrower than the original brainstorming directions. Scores are provisional, on a 1--10 scale, and are not claims of guaranteed novelty.
+
+## Candidate A - Sufficiency maps for photonic noise compilation
+
+**Status: PROMISING; recommended primary project**
+
+### Core research question
+
+How many correlation orders and physical outcome classes are required for a reduced QEC noise model to reproduce the logical failure behavior of a microscopic photonic primitive?
+
+### Physical mechanism
+
+Finite source quality, photon loss, detector inefficiency, multiphoton emission, and partial distinguishability produce a joint distribution over optical outcomes. Marginalizing that distribution too aggressively can turn hidden or correlated faults into apparently independent erasures.
+
+### Why two simulators are required
+
+- **Strawberry Fields:** generate Fock-space outcome statistics for a small, physically specified source/fusion/measurement primitive.
+- **Stim:** embed candidate effective faults into repeated syndrome-extraction circuits at several code distances and rounds.
+- **PyMatching:** compare a baseline independent decoder with decoders using the compiled weights/correlations.
+
+The scientific result is the reduction error, not the software connection.
+
+### Novelty boundary
+
+DEM generation and hardware-aware decoding already exist. A new contribution would be an experimentally interpretable *sufficiency map*: independent, pairwise, or higher-order models are compared against the same microscopic source, and the boundary is reported in terms of physical parameters and logical-error tolerance. This is different from merely fitting a decoder to syndrome data.
+
+### Why it matters
+
+It tells researchers when a simple loss/Pauli model is safe, when it is dangerously optimistic, and how much microscopic information must be retained to make a logical prediction.
+
+### Minimum viable experiment
+
+Choose one fusion-like two-mode primitive. Sweep transmission, second-order source correlation, distinguishability, and detector efficiency. Compile:
+
+1. independent erasure model,
+2. erasure plus measurement-flip model,
+3. pair-correlated detector-error model,
+4. a reference model sampled directly from the microscopic conditional distribution.
+
+Run each through Stim/PyMatching for distances 3, 5, and 7 and at least two rounds. Report logical failure and confidence intervals.
+
+### Full paper path
+
+Add code distance and round scaling, source/detector calibration uncertainty, architecture placement, decoder mismatch, higher-order hyperedges, and a held-out physical parameter regime. Derive a simple perturbative explanation for the first regime in which each additional correlation order becomes necessary.
+
+### Main risks
+
+The optical primitive may not map cleanly to a stabilizer fault without an explicit encoding convention. Higher-order correlations may be too rare to estimate. Stim cannot represent arbitrary coherent bosonic evolution; the compiler must state exactly where a stochastic measurement-level approximation is made.
+
+### Kill criterion
+
+Abandon or radically narrow the project if, after fixing the primitive and calibration range, an independent model stays within the predefined tolerance (for example, 1% relative logical-error error) across all relevant distances and physical parameters.
+
+### Evaluation
+
+| Criterion | Score |
+|---|---:|
+| Novelty | 8 |
+| Importance | 8 |
+| Feasibility | 8 |
+| Simulator integration | 10 |
+| Publication potential | 8 |
+| Science-fair clarity | 9 |
+
+---
+
+## Candidate B - Hidden-fault phase diagram for multiphoton emission and loss
+
+**Status: VALIDATION CASE; not recommended as a standalone paper**
+
+### Core research question
+
+When does multiphoton emission followed by loss create enough unheralded fault probability that an erasure-only photonic QEC model becomes logically misleading?
+
+### Physical mechanism
+
+A two-photon event can lose one photon and produce the same detector record as a valid one-photon event. The event is no longer a flagged erasure even though its origin was a source fault.
+
+### Why two simulators are required
+
+- **Strawberry Fields:** retain Fock sectors above one photon and calculate conditional detector records.
+- **Stim/PyMatching:** test whether the hidden events behave like measurement flips, correlated faults, or another effective mechanism at logical scale.
+
+### Novelty boundary
+
+Multiphoton emission and loss are known physical concerns. The potentially new part is a quantitative *logical phase diagram* showing when the usual erasure-only abstraction changes decoder ranking or code-distance scaling. This must be checked directly against papers that already include imperfect sources.
+
+### Why it matters
+
+It could identify a calibration regime in which improving source brightness or loss alone gives a false impression of QEC progress because hidden events dominate.
+
+### Minimum viable experiment
+
+Use a low-dimensional source model with vacuum, one-photon, and two-photon components. Match the marginal detected click rate across an erasure-only and a multiphoton-plus-loss model, then compare logical failure under identical Stim circuits.
+
+### Full paper path
+
+Add detector number resolution, dark counts, source models beyond the two-photon sector, code distance, decoder mismatch, and a resource comparison between improving transmission and improving source purity.
+
+### Main risks
+
+The effect may be a small correction in realistic operating regimes, or already be fully quantified in the nearest photonic QEC architecture paper. A simplistic mapping could also confuse a source event with a particular Pauli fault.
+
+### Kill criterion
+
+Drop it as a standalone project if the difference is below statistical uncertainty or if a careful literature search finds the same phase diagram and conclusion.
+
+### Evaluation
+
+| Criterion | Score |
+|---|---:|
+| Novelty | 5 |
+| Importance | 6 |
+| Feasibility | 9 |
+| Simulator integration | 9 |
+| Publication potential | 5 |
+| Science-fair clarity | 9 |
+
+---
+
+## Candidate C - Multimode distinguishability as correlated syndrome noise
+
+**Status: PROMISING; needs literature validation**
+
+### Core research question
+
+Does tracing over unobserved spectral or temporal modes create nonlocal correlations in photonic syndrome data that are invisible to a scalar visibility parameter but relevant to logical decoding?
+
+### Physical mechanism
+
+Partial distinguishability changes multi-photon interference amplitudes. If modes are not resolved by the detector, which-path information is effectively traced out. Several outcomes can therefore be correlated even when the marginal fusion-success probability is unchanged.
+
+### Why two simulators are required
+
+- **Strawberry Fields:** model a small multimode interferometer, mode overlap, loss, and detector coarse-graining.
+- **Stim/PyMatching:** propagate the resulting detector-event distribution through repeated QEC rounds and compare a visibility-only model with a correlation-aware model.
+
+### Novelty boundary
+
+The literature already studies distinguishability and fusion thresholds, and temporal filtering itself is historical and not to be revived unchanged. The new boundary is testing whether *the same marginal visibility* can hide different correlation structures with different logical consequences, rather than optimizing a time window.
+
+### Why it matters
+
+Experimental characterization often compresses mode mismatch into one visibility number. If that number is not sufficient for logical prediction, calibration and decoder design need additional observables.
+
+### Minimum viable experiment
+
+Construct two microscopic mode-overlap models with matched HOM visibility and matched single-event rates but different spectral-mode mixtures. Compare their detector-event covariance and logical error for a small repeated syndrome circuit.
+
+### Full paper path
+
+Sweep Schmidt-mode number, mode-dependent loss, detector resolution, code distance, round count, and decoder knowledge. Identify a minimal set of optical calibration statistics that predicts logical performance.
+
+### Main risks
+
+The chosen Strawberry Fields backend may not represent the required multimode detector process cleanly. The correlations may disappear after the actual syndrome extraction. The premise may overlap with existing distinguishability analyses.
+
+### Kill criterion
+
+Abandon if matched-visibility models produce indistinguishable logical behavior across all tested distances or if the effect depends on an unphysical detector assumption.
+
+### Evaluation
+
+| Criterion | Score |
+|---|---:|
+| Novelty | 7 |
+| Importance | 7 |
+| Feasibility | 6 |
+| Simulator integration | 9 |
+| Publication potential | 7 |
+| Science-fair clarity | 7 |
+
+---
+
+## Candidate D - Detector dead time and crosstalk as non-Markovian QEC noise
+
+**Status: PROMISING; needs a carefully bounded physical model**
+
+### Core research question
+
+Can detector dead time and crosstalk change the logical-error scaling of a photonic QEC schedule even when the average detector efficiency is held fixed?
+
+### Physical mechanism
+
+A detection event can suppress a nearby or subsequent detection, while crosstalk can create an extra click conditional on another click. The resulting errors depend on event order, detector history, and spatial adjacency rather than only on independent per-measurement probabilities.
+
+### Why two simulators are required
+
+- **Strawberry Fields or a custom optical measurement layer:** generate physically timed click records from an optical primitive and detector model.
+- **Stim:** represent the resulting time- and location-dependent measurement faults in a repeated stabilizer circuit.
+- **PyMatching:** test whether a decoder using only average efficiency is systematically misweighted.
+
+### Novelty boundary
+
+Detector imperfections are known, and generic detector noise simulations are not novel. The new question is whether equal average efficiency can conceal different history-dependent logical behavior and whether schedule changes, rather than hardware upgrades, can mitigate it.
+
+### Why it matters
+
+It connects a controllable experimental parameter (timing and detector spacing) to QEC scheduling and calibration requirements.
+
+### Minimum viable experiment
+
+Use a two-detector toy primitive with a dead-time window and one crosstalk probability. Match average click efficiency across an independent model and a history-dependent model. Feed both into a small repeated Stim circuit and compare logical failure and decoder calibration.
+
+### Full paper path
+
+Add realistic timing distributions, detector multiplexing, dark counts, schedule optimization, distance scaling, and a decoder with/without history features. Report whether the advantage comes from physical mitigation or simply better modeling.
+
+### Main risks
+
+Stim's standard circuit model is not inherently a detector-history simulator. A custom sampler-to-detector-event bridge is required. The effect may be architecture-specific and not transferable.
+
+### Kill criterion
+
+Drop if a memoryless model with matched conditional detector probabilities reproduces logical results, or if no realistic dead-time/crosstalk regime changes decoder conclusions.
+
+### Evaluation
+
+| Criterion | Score |
+|---|---:|
+| Novelty | 7 |
+| Importance | 7 |
+| Feasibility | 7 |
+| Simulator integration | 8 |
+| Publication potential | 6 |
+| Science-fair clarity | 8 |
+
+---
+
+## Candidate E - Leakage-aware reduction at a photonic-to-qubit interface
+
+**Status: PROMISING; high risk**
+
+### Core research question
+
+When photonic population leaves the intended qubit/code subspace, is an erasure flag sufficient, or does leakage persist and create multi-round logical faults that require an explicit leakage-reduction model?
+
+### Physical mechanism
+
+Higher photon-number sectors, failed measurements, and imperfect state preparation can leave population outside the nominal computational subspace. A later operation may convert that population into a wrong click rather than a clean erasure.
+
+### Why two simulators are required
+
+- **Strawberry Fields:** track the vacuum and higher-Fock sectors through preparation, interference, loss, and measurement.
+- **Stim:** evaluate candidate abstractions: immediate erasure, leakage with reset, leakage without reset, and leakage-to-measurement-flip.
+- **PyMatching:** quantify decoder performance under each abstraction.
+
+### Novelty boundary
+
+Leakage-aware QEC is an established topic, so "photonic leakage exists" is not new. A possible contribution is a device-specific reduction showing which leakage abstraction is sufficient for a chosen photonic measurement primitive and how the answer changes with reset timing.
+
+### Why it matters
+
+It prevents a common modeling error: treating every out-of-subspace event as a benign flagged loss when it can persist into later rounds.
+
+### Minimum viable experiment
+
+Choose one photonic qubit encoding and one reset convention. Simulate one leakage-producing primitive and compare the four effective models at distances 3--7.
+
+### Full paper path
+
+Include several reset schedules, source and detector imperfections, leakage lifetime, decoder knowledge, and comparison to a leakage-reduction circuit. Establish a transfer criterion for the reduced model.
+
+### Main risks
+
+The mapping from Fock population to a discrete leakage state is encoding-dependent. The project could duplicate established leakage-QEC work without a photonic-specific insight.
+
+### Kill criterion
+
+Do not pursue if the selected encoding has a directly available validated leakage model that already answers the chosen question, or if all models are logically equivalent in the tested regime.
+
+### Evaluation
+
+| Criterion | Score |
+|---|---:|
+| Novelty | 6 |
+| Importance | 8 |
+| Feasibility | 5 |
+| Simulator integration | 9 |
+| Publication potential | 7 |
+| Science-fair clarity | 7 |
+
+---
+
+# 19. Comparison and ranking
+
+| Rank | Project | Status | Main strength | Main weakness |
+|---:|---|---|---|---|
+| 1 | Sufficiency maps for photonic noise compilation | PROMISING | Directly answers the abstraction-gap question and supports a rigorous error/compression result | Requires a precise physical-to-fault convention |
+| 2 | Multimode distinguishability as correlated syndrome noise | PROMISING; needs validation | Tests whether a standard optical summary statistic is logically sufficient | Multimode detector modeling may be difficult |
+| 3 | Detector dead time and crosstalk | PROMISING; bounded model needed | Experimentally interpretable and schedule-relevant | History-dependent noise is awkward to encode in Stim |
+| 4 | Leakage-aware photonic-to-qubit reduction | PROMISING; high risk | Important logical failure mode with strong QEC relevance | Encoding-specific and close to established leakage literature |
+| 5 | Multiphoton emission plus loss phase diagram | VALIDATION CASE | Clean MVP and excellent educational narrative | Too narrow unless a genuinely new regime is found |
+| 6 | Existing historical temporal-filtering idea | HISTORICAL / do not revive unchanged | Clear physical tradeoff | Already sufficiently explored for this process |
+| 7 | Existing allocation, asymmetric architecture, analog-decoding, burst, and generic co-design ideas | HISTORICAL | Useful background and possible components | Rejected or crowded without a new mechanism |
+
+## Single-project recommendation
+
+Choose **Candidate A**, the sufficiency-map version of the Physical Photonic Noise Compiler.
+
+The first paper claim should not be "we built a compiler." It should be:
+
+> A specified class of microscopic photonic mechanisms requires correlation information beyond the conventional independent-erasure model, and we quantify the minimum reduced model needed to predict logical performance.
+
+This claim is falsifiable, scales naturally from a science-fair MVP to a paper, and uses each simulator for a necessary reason. Candidate B should be the first validation case because it tests a concrete higher-Fock mechanism. Candidate C should be the first expansion only if the MVP shows that correlation order matters.
+
+## Natural research program
+
+Candidates A, B, C, and E can form one coherent program only if they share the same model-reduction metric:
+
+$$
+\mathcal{E}
+=
+\left|P_L^{\rm microscopic}-P_L^{\rm reduced}\right|
+$$
+
+under matched physical calibration and a stated code/decoder family.
+
+The program would progress from:
+
+1. higher-Fock hidden faults (B),
+2. correlation-order sufficiency (A),
+3. multimode correlations (C),
+4. leakage persistence and reset conventions (E).
+
+Candidate D is related infrastructure but should remain separate unless detector history becomes the central mechanism. Do not merge projects merely because they import the same Python packages.
+
+---
+
+# 20. Concrete execution plan for the recommended project
+
+## Phase 0 - Freeze definitions before coding
+
+Select one photonic primitive, one qubit/measurement convention, one code family, one decoder, and one primary metric. Define whether a "fault" means an optical event, a detector event, or a logical observable flip. Publish the mapping convention in the methods before sweeping parameters.
+
+## Phase 1 - Validate the microscopic primitive
+
+Reproduce limiting cases: perfect source, zero loss, perfect detection, and deliberately injected loss. Check photon-number cutoff convergence and sampling uncertainty. Do not use a reduced model until these checks pass.
+
+## Phase 2 - Construct nested reductions
+
+Build independent-erasure, independent-Pauli/measurement, pair-correlated, and higher-order candidate models. Keep a held-out parameter set that is never used to fit model probabilities.
+
+## Phase 3 - Compare at logical scale
+
+For each reduction, run matched Stim circuits at multiple distances and rounds. Use PyMatching with both correctly informed and deliberately mismatched weights. Report logical failure, decoder failure, confidence intervals, runtime, and model size.
+
+## Phase 4 - Identify the boundary
+
+Find the smallest physical parameter region where each simpler abstraction violates the predefined error tolerance. Explain the transition with conditional probabilities or a low-order expansion rather than only plotting it.
+
+## Phase 5 - Robustness and reproducibility
+
+Repeat with detector efficiency, source statistics, and calibration uncertainty varied independently. Fix random seeds for examples, use independent seeds for confidence intervals, and release the primitive specification, model files, and scripts.
+
+## Recommended early-stop tests
+
+Stop the project before a large sweep if any of the following is true:
+
+- photon-number cutoff changes the reference result materially and cannot be controlled;
+- the optical-to-QEC mapping is not operationally defined;
+- the full and reduced models agree within the tolerance everywhere;
+- the only difference appears at probabilities too small to estimate with available compute;
+- a newly found paper already reports the same physical regime, reduction metric, and conclusion.
+
+---
+
+# 21. Unresolved literature questions for the next model
+
+1. Has a paper already quantified a microscopic photonic-to-DEM reduction error using the same logical-observable metric, rather than merely deriving a phenomenological noise channel?
+2. Which fusion-based or cluster-state architecture gives the cleanest operational definition of an optical primitive and detector event?
+3. Can a Strawberry Fields backend represent the required multimode, finite-efficiency, and number-resolving measurement model without an uncontrolled truncation?
+4. What correlation structures can Stim's detector error model represent directly, and when must a custom sampler or a decomposition approximation be used?
+5. Which experimentally reported source, detector, and indistinguishability ranges make the predicted discrepancy observable with feasible Monte Carlo effort?
+6. Can a code-distance scaling result be made meaningful when the physical primitive is only locally simulated?
+7. Is "logical error within epsilon" the right sufficiency metric, or should the study also compare decoder ranking, threshold estimate, and observable-specific distributions?
+8. Should PennyLane be used at all? It is justified only if differentiable optimization is part of the scientific question; it should not be added for framework-counting.
+
+The next handoff should answer these questions with primary papers, not search snippets, and should update every status rather than silently replacing this document.
