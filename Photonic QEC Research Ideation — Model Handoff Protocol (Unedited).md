@@ -1653,3 +1653,270 @@ Stop the project before a large sweep if any of the following is true:
 8. Should PennyLane be used at all? It is justified only if differentiable optimization is part of the scientific question; it should not be added for framework-counting.
 
 The next handoff should answer these questions with primary papers, not search snippets, and should update every status rather than silently replacing this document.
+
+# 22. Fresh critical iteration — 2023-present literature and project reset (2026-09-07)
+
+## 22.1 Evidence rule and scope
+
+This is a fresh, targeted literature pass, not an exhaustive systematic review. I separate statements supported by a primary paper or an official implementation specification from hypotheses that still require an experiment. A citation below supports the narrow result described; it does **not** establish that the proposed project is novel. Novelty remains uncertain until the exact primitive, encoding, decoder, metric, and parameter regime are searched together.
+
+The most relevant primary sources checked in this pass are:
+
+- Bartolucci et al., "Fusion-based quantum computation," *Nature Communications* 14, 912 (2023), https://doi.org/10.1038/s41467-023-36493-1. This establishes the FBQC resource-state/fusion framework, not a microscopic optical noise compiler.
+- Sahay, Claes, and Puri, "Tailoring Fusion-Based Error Correction for High Thresholds to Biased Fusion Failures," *Physical Review Letters* 131, 120604 (2023), https://doi.org/10.1103/PhysRevLett.131.120604. This shows that fusion-basis bias and architecture-specific decoding materially affect thresholds.
+- Zhang et al., "Encoding Error Correction in an Integrated Photonic Chip," *PRX Quantum* 4, 030340 (2023), https://doi.org/10.1103/PRXQuantum.4.030340. This is an experimental error-correction demonstration, but it is not a general microscopic-to-logical reduction.
+- Yard et al., "On-Chip Quantum Information Processing with Distinguishable Photons," *Physical Review Letters* 132, 150602 (2024), https://doi.org/10.1103/PhysRevLett.132.150602. Time-resolved detection increased interference visibility for detuned photons; the paper does not establish the logical sufficiency of visibility for QEC.
+- Aqua and Dayan, "Temporal quantum eraser: Fusion gates with distinguishable photons," *Physical Review A* 110, 043709 (2024), https://doi.org/10.1103/PhysRevA.110.043709. This supports a physical route for mitigating temporal distinguishability, not a decoder-level theorem.
+- Taylor et al., "Quantum error cancellation in photonic systems - undoing photon losses," *Physical Review A* 110, 022622 (2024), https://doi.org/10.1103/PhysRevA.110.022622. This is loss mitigation, not fault-tolerant QEC or a DEM compiler.
+- Chan et al., "Tailoring fusion-based photonic quantum computing schemes to quantum emitters," *PRX Quantum* 6, 020304 (2025), https://doi.org/10.1103/PRXQuantum.6.020304. This directly studies emitter-relevant loss, distinguishability, encoded fusions, and thresholds using an architecture-level model.
+- Meng et al., "Temporal fusion of entangled resource states from a quantum emitter," *Nature Communications* 16, 7602 (2025), https://doi.org/10.1038/s41467-025-62130-0. This experimentally demonstrates time-like fusion and makes timing, source memory, and delay loss concrete hardware variables.
+- Pettersson et al., "Deterministic Generation of Concatenated Graph Codes from Quantum Emitters," *PRX Quantum* 6, 010305 (2025), https://doi.org/10.1103/PRXQuantum.6.010305. This reinforces that source construction and resource overhead are part of the logical architecture, not an interchangeable noise parameter.
+- Derks et al., "Designing fault-tolerant circuits using detector error models," arXiv:2407.13826 (2024), https://arxiv.org/abs/2407.13826. This explains what DEMs capture at circuit, schedule, and gadget levels.
+- Zhou et al., "Learning to decode logical circuits," arXiv:2504.16999 (2025), https://arxiv.org/abs/2504.16999, and the drift/correlation study arXiv:2311.16214 (2023), https://arxiv.org/abs/2311.16214. These show that correlated and history-dependent decoding is an active problem outside photonics too.
+
+For software behavior, the Stim DEM specification is the authoritative description of independent error mechanisms, multi-detector targets, and suggested decompositions: https://github.com/quantumlib/Stim/blob/main/doc/file_format_dem_detector_error_model.md. The PyMatching 2 documentation states its normal MWPM assumption explicitly: independent, graphlike mechanisms, with `decompose_errors=True` commonly used before loading a Stim DEM: https://pymatching.readthedocs.io/en/latest/. These are implementation specifications, not evidence that a photonic compiler has already been solved.
+
+## 22.2 What the recent literature actually establishes
+
+1. **FBQC is no longer just an abstract loss-only proposal.** The 2023 FBQC paper, the 2023 biased-fusion paper, the 2025 emitter-tailoring paper, and the 2025 temporal-fusion experiment establish a meaningful architecture in which resource-state preparation, fusion outcome bias, loss, distinguishability, timing, and feed-forward interact. **Literature-supported consequence:** a useful reduction must name an architecture and primitive; a universal photonic noise compiler is not justified.
+
+2. **Architecture-level threshold papers use compressed physical parameters.** Chan et al. model loss and distinguishability in an encoded-fusion analysis and obtain useful thresholds. That is strong evidence that reduced models can be scientifically useful. It is not evidence that a scalar distinguishability or loss parameter preserves every detector correlation generated by a microscopic optical model. The latter is a hypothesis to test.
+
+3. **Temporal resolution changes the physical statistics.** Yard et al. experimentally increased interference visibility by resolving detection times, and Aqua and Dayan analyze erasure of temporal distinguishability in fusion gates. Meng et al. demonstrate temporal fusion with a real emitter and delay line. **Literature-supported:** detector timing and source history can matter before the QEC layer. **Not established:** that two devices matched in average visibility and fusion-success probability have identical logical error rates.
+
+4. **Photonic QEC has experimental demonstrations, but not a generic microscopic-to-logical bridge.** Zhang et al. demonstrate error correction on an integrated photonic chip. Taylor et al. study probabilistic loss cancellation. Neither paper supplies the exact Fock/mode/detector-record-to-DEM transfer requested here. This is a gap worth checking, not a novelty claim.
+
+5. **Leakage is a distinct QEC concern, but a photonic leakage variable is encoding-dependent.** The 2023 leakage literature establishes that leakage can persist and correlate later faults in QEC. A vacuum, multiphoton, failed-fusion, or wrong-rail event is not automatically the same leakage process. **Hypothesis:** for a selected dual-rail primitive, a small latent state plus reset convention may outperform an erasure-only abstraction.
+
+6. **Stim can express more than pairwise edges, but PyMatching's usual fast path cannot use arbitrary mechanisms exactly.** A DEM `error(p)` may target several detectors and observables, and separators can suggest a graphlike decomposition. The DEM is still a list of independently sampled mechanisms. PyMatching's standard matching graph requires one or two detection events per mechanism; decomposition changes the effective inference problem unless the factorization is valid. Therefore the previous wording "Stim cannot represent arbitrary correlated errors" was wrong, while the warning about exact graphlike decoding was directionally right.
+
+7. **History is not impossible, but it is not native continuous-time detector physics.** A finite-state detector history can be encoded by extra circuit state, by a custom sampler, or by time-dependent graph weights. The practical limitation is that Stim/PyMatching will not infer dead time, afterpulsing, mode memory, or source memory from an optical record automatically. This makes a history-aware bridge a possible research tool, not a reason to claim that Stim is incapable of the task.
+
+## 22.3 Fact-check and criticism of the previous iteration
+
+| Previous claim or proposal | Verdict | Correction for this iteration |
+|---|---|---|
+| "Strawberry Fields to Stim compiler" is the active project. | Too software-centric. | Keep the project active only as a calibrated model-reduction benchmark with a specified primitive and logical metric. An API alone is not a contribution. |
+| Stim cannot represent arbitrary correlated or higher-order detector events. | Inaccurate. | Stim DEM syntax can contain multi-detector mechanisms and suggested decompositions. The hard limit is exact scalable inference and the graphlike assumptions of the usual PyMatching path. |
+| PyMatching ignores correlations. | Overbroad. | Standard MWPM assumes independent graphlike mechanisms; correlated mechanisms can be decomposed or handled with custom graph constructions, but this can be approximate or decoder-specific. Test the decomposition error instead of asserting impossibility. |
+| Matched visibility may hide logically different multimode noise. | Plausible hypothesis, not a result. | Require two explicit mode density matrices with matched measured marginals and a held-out logical comparison. Do not call this an established effect. |
+| Multiphoton emission plus loss creates hidden faults. | Mechanistically plausible, not universal. | Whether it is hidden depends on encoding, detector number resolution, feed-forward, and the chosen fault convention. Treat it as a validation case, not a theorem. |
+| Detector dead time/crosstalk is a photonic QEC result. | Not established by the cited literature. | It is a synthetic stress test until detector parameters and a photonic fusion schedule are justified by a primary source. |
+| Leakage-aware reduction is automatically photonic. | Too strong. | Define leakage operationally for one encoding and one reset rule. Higher Fock number, vacuum, and detector ambiguity must not be conflated. |
+| Candidate A deserved novelty 8/10. | Optimistic. | Hardware-aware decoding, DEM design, and photonic fusion threshold studies narrow the novelty. The defensible novelty is a measured sufficiency/error frontier, so novelty is 6-7/10 until a targeted search is negative. |
+
+## 22.4 Updated assessment of the active compiler
+
+**Status: ACTIVE, but renamed "calibration-conditioned photonic model-reduction benchmark."**
+
+The project should not promise an exact map
+
+`arbitrary bosonic dynamics -> universal Stim circuit`.
+
+That map is not unique: the same optical record can correspond to different logical faults under different encodings, feed-forward rules, detector resolutions, and code schedules. The testable object is instead
+
+`physical parameters -> optical record r -> detector/history record h -> syndrome/observable sample -> reduced model M`.
+
+For one named fusion primitive and one named logical circuit, compare a family of reductions `M` against the microscopic reference. The primary result is a Pareto frontier between model complexity and held-out error in logical observables, not the existence of a software interface.
+
+The revised compiler assessment is:
+
+- **Supported by literature:** reduced architecture-level noise models are useful; FBQC thresholds depend on loss, fusion bias, distinguishability, resource state, and adaptivity; DEMs are a useful abstraction for Clifford QEC; graphlike MWPM is fast but model-dependent.
+- **Hypothesis requiring validation:** a small set of calibrated statistics (for example loss, `g2`, timing covariance, HOM visibility, and detector efficiency) is sufficient for logical prediction in a specified regime.
+- **Required bridge:** Strawberry Fields or an equivalent Fock/mode reference generates conditional optical records; a custom measurement layer preserves time/mode/history information; Stim hosts reduced Clifford circuits; PyMatching supplies a graphlike baseline; a custom sampler or brute-force small code supplies the reference when the full distribution is not graphlike.
+- **Minimum scientific claim:** identify at least one physical regime where an independent-erasure reduction fails a pre-registered logical-error tolerance, and identify the smallest richer model that passes on held-out parameters. If no such regime exists, the project should report a negative result and stop.
+- **Metrics:** logical failure probability and confidence interval; conditional syndrome-distribution distance; decoder ranking; threshold or distance-scaling proxy; runtime and model size. `P_L` alone is insufficient because two models can agree on one code distance for the wrong reason.
+
+## 22.5 Differentiated candidates for this iteration
+
+### Candidate A - Minimal sufficient statistics for a microscopic fusion primitive
+
+**Status:** PROMISING; refined version of the active compiler and primary recommendation.
+
+**Research question:** For one dual-rail fusion-like parity measurement, what is the smallest calibrated statistic set that predicts logical observables within a fixed tolerance across code distances, rounds, and held-out hardware parameters?
+
+**Physical mechanism:** Vacuum, one- and two-photon sectors, loss, detector inefficiency, dark counts, mode overlap, and coarse-grained detection jointly produce conditional records. Marginalizing before conditioning on the fusion outcome can turn a physical event into a different detector-error distribution.
+
+**Simulator roles:** Strawberry Fields generates the truncated Fock/mode reference and conditional records. A measurement/history layer turns records into explicit outcome categories. Stim runs the reduced stabilizer circuits. PyMatching decodes the independent-erasure and graphlike candidates. A custom sampler or brute-force small code is the reference when the physical mechanism is not graphlike. PennyLane is excluded unless an optimization question is separately justified.
+
+**Novelty boundary:** DEM construction, hardware-aware decoding, and fusion thresholds are established. The possible contribution is narrower: a reproducible, held-out *sufficiency map* comparing independent, pair-correlated, history-conditioned, and higher-order reductions under matched physical calibration. This is a hypothesis about a particular primitive, not a claim of a universal compiler.
+
+**Why it matters:** It tells an experimentalist when a loss/Pauli abstraction is safe, when it is overconfident, and which calibration measurement buys logical predictive power.
+
+**Minimum viable experiment:** Fix a 50/50 two-mode fusion, dual-rail input, threshold versus number-resolving detector variants, one explicit reset/feed-forward rule, and a repetition-code or small surface-code syndrome circuit. Sweep loss, `g2`, mode overlap, detector efficiency, and timing jitter. Compare (i) independent erasure, (ii) erasure plus measurement flip, (iii) pair-correlated DEM, and (iv) direct conditional-record sampling. Hold out a rectangular region of parameter space.
+
+**Full paper path:** Add a fusion-network instance from an FBQC architecture, code distances 3, 5, and 7, repeated rounds, calibration uncertainty, decoder mismatch, and a finite-size scaling proxy. Report both positive and negative sufficiency results and release the primitive specification.
+
+**Main risks:** The optical-to-syndrome convention may be arbitrary; Fock cutoff and mode discretization may dominate; correlations may be too rare to estimate; the chosen code may hide the difference. The full physical distribution may not be representable by a single DEM.
+
+**Kill criterion:** Stop as a main project if the independent model stays within the pre-registered tolerance over all physically justified regimes, or if the result changes materially with an uncontrolled optical cutoff, or if an exact paper already reports the same primitive, reduction metric, and boundary.
+
+**Evaluation:**
+
+| Criterion | Score (1-10) |
+|---|---:|
+| Novelty after literature check | 7 |
+| Importance | 8 |
+| Feasibility | 7 |
+| Simulator integration | 10 |
+| Publication potential | 8 |
+| Science-fair clarity | 8 |
+
+### Candidate B - History-conditioned detector model for temporal fusion
+
+**Status:** PROMISING but parameter-data limited.
+
+**Research question:** Can two temporal-fusion devices with matched average efficiency and fusion-success probability have different logical performance because of detector dead time, afterpulsing, timing jitter, or source memory, and can a finite-state history model recover the difference?
+
+**Physical mechanism:** A click changes the probability of a nearby click or later click; a delay line couples emissions from different times; time-bin overlap and source spin memory make the detector record non-Markovian at the scalar-efficiency level. The proposed logical effect is a hypothesis, not established by Meng et al.
+
+**Simulator roles:** Strawberry Fields supplies the two-mode optical primitive and loss/interference statistics. A custom time-tagged detector layer adds a finite-state dead-time/afterpulse model. Stim hosts a repeated parity-extraction schedule. PyMatching is compared with static weights, time-dependent weights, and a state-expanded graph; a custom sampler verifies whether graph decomposition changes the answer.
+
+**Novelty boundary:** Temporal fusion and temporal distinguishability are established, as are generic correlation-aware decoders. The possible novelty is the end-to-end comparison of equal-average detector models on a photonic QEC schedule, with a measured cost for ignoring history. It is not novel to say that detectors have dead time.
+
+**Why it matters:** If history changes logical performance, detector calibration must report conditional statistics and QEC schedules may be co-designed with detector recovery time. If it does not, a simpler model is justified.
+
+**Minimum viable experiment:** Use two matched click-record models with equal marginal efficiency, dark-count rate, and fusion success. Vary only dead time or afterpulse probability. Feed their time-tagged records into a small repeated circuit and compare static versus history-aware decoding.
+
+**Full paper path:** Calibrate parameters from a detector data sheet or experiment, add temporal fusion and delay loss, compare decoder latency and model complexity, and test transfer across schedules and code distances.
+
+**Main risks:** Synthetic detector parameters may not be representative; Stim may need an awkward state expansion; the effect may be absorbed by an empirically re-estimated time-dependent edge weight; a history-aware decoder may be more expensive than the gain.
+
+**Kill criterion:** Kill if matched-average and history-aware models have indistinguishable logical results within uncertainty, or if a memoryless model with conditional per-time-bin weights reproduces the result, or if no defensible detector regime is available.
+
+**Evaluation:**
+
+| Criterion | Score (1-10) |
+|---|---:|
+| Novelty after literature check | 7 |
+| Importance | 7 |
+| Feasibility | 6 |
+| Simulator integration | 9 |
+| Publication potential | 7 |
+| Science-fair clarity | 7 |
+### Candidate C - Visibility-equivalent multimode distinguishability stress test
+
+**Status:** PROMISING; high modeling risk and uncertain novelty.
+
+**Research question:** Do two spectral/temporal mode mixtures with matched HOM visibility, single-click rates, and fusion-success probability nevertheless produce different syndrome correlations or logical error rates?
+
+**Physical mechanism:** Partial distinguishability is a density matrix over hidden modes. Interference and detector coarse-graining trace over those modes, while time-resolved detection can reveal or erase information. The logical discrepancy is a hypothesis; Yard et al. establish that temporal resolution changes visibility, not that visibility is insufficient for QEC.
+
+**Simulator roles:** Strawberry Fields represents a small discretized multimode interferometer and Fock cutoff. A mode-density-matrix or distinguishability-matrix layer constructs matched-marginal counterexamples. Stim carries the reduced repeated fusion circuit. PyMatching compares visibility-only and correlation-aware graphlike models; direct sampling checks the full conditional distribution.
+
+**Novelty boundary:** Multimode interference, visibility, and distinguishability mitigation are established. The possible contribution is a controlled *equivalence-class* test: identical commonly reported optical summaries but different logical predictions, with a minimal additional calibration statistic. This must be checked against the closest fusion-threshold papers before claiming novelty.
+
+**Why it matters:** A single visibility number is attractive experimentally. If it is not logically sufficient, calibration and decoder models need mode-sensitive statistics; if it is sufficient in the selected regime, that negative result is useful too.
+
+**Minimum viable experiment:** Construct two two-mode mixtures with equal HOM visibility and equal click/fusion marginals but different Schmidt-mode weights or mode-dependent loss. Compare detector-event covariance and logical failure in a small repeated fusion circuit.
+
+**Full paper path:** Add time resolution, mode-dependent loss, several mode numbers, code-distance scaling, and a calibration-sufficiency bound. Compare against the distinguishability model used by Chan et al.
+
+**Main risks:** Strawberry Fields may not represent continuous spectral wave packets faithfully; matching all marginals may be numerically ill-conditioned; the difference may vanish after syndrome extraction; the construction may duplicate an existing distinguishability analysis.
+
+**Kill criterion:** Kill if all matched-visibility models give the same logical result within uncertainty, if the mode model is not physically realizable, or if the same equivalence-class result is already reported.
+
+**Evaluation:**
+
+| Criterion | Score (1-10) |
+|---|---:|
+| Novelty after literature check | 6 |
+| Importance | 8 |
+| Feasibility | 5 |
+| Simulator integration | 9 |
+| Publication potential | 7 |
+| Science-fair clarity | 7 |
+### Candidate D - Leakage persistence and reset sufficiency in dual-rail fusion
+
+**Status:** IMPORTANT validation case; high encoding dependence.
+
+**Research question:** For a specified dual-rail fusion primitive, when is an out-of-code-space event adequately modeled as an immediate erasure, and when does it persist or convert into a later measurement fault unless a reset is applied?
+
+**Physical mechanism:** Loss, vacuum, multiphoton emission, imperfect number resolution, and failed fusions can leave an optical state outside the intended single-excitation subspace. A later beamsplitter or detector can transform that state into a wrong click rather than a clean flag. This conversion is encoding- and detector-dependent.
+
+**Simulator roles:** Strawberry Fields tracks vacuum and higher-Fock sectors through preparation, interference, loss, and measurement. A discrete latent-state bridge defines leakage, reset, and conversion events. Stim compares immediate-erasure, leakage-with-reset, leakage-without-reset, and leakage-to-measurement-flip abstractions. PyMatching evaluates the decoder cost of treating all events as erasures; direct sampling validates the bridge.
+
+**Novelty boundary:** Leakage-aware QEC is established and general leakage-removal work exists. The possible contribution is only a device-specific sufficiency result for one photonic encoding, primitive, and reset timing. "Photonic leakage exists" is not novel.
+
+**Why it matters:** It can prevent a serious modeling error in which an apparently heralded loss is assumed benign even though population survives into a later round.
+
+**Minimum viable experiment:** Use vacuum, one-photon, and two-photon input sectors with a threshold detector and an explicit reset/no-reset choice. Compare the four effective models at distances 3 and 5 and two syndrome-round counts.
+
+**Full paper path:** Add number-resolving detection, dark counts, source `g2`, leakage lifetime, reset latency, and a fusion-network placement. Report the parameter boundary at which each abstraction changes decoder ranking or logical scaling.
+
+**Main risks:** The latent leakage state may be an arbitrary bookkeeping choice; the selected dual-rail implementation may erase immediately; Fock cutoff and detector model may dominate; the result may reproduce established general leakage behavior without a photonic-specific contribution.
+
+**Kill criterion:** Kill if the encoding has no persistent out-of-subspace state under the selected primitive, if all abstractions are equivalent within uncertainty, or if a primary paper already gives the same reset-dependent reduction.
+
+**Evaluation:**
+
+| Criterion | Score (1-10) |
+|---|---:|
+| Novelty after literature check | 6 |
+| Importance | 8 |
+| Feasibility | 5 |
+| Simulator integration | 9 |
+| Publication potential | 7 |
+| Science-fair clarity | 8 |
+## 22.6 Ranking and primary choice
+
+| Rank | Candidate | Status | Reason for rank |
+|---:|---|---|---|
+| 1 | A. Minimal sufficient statistics | PRIMARY | Best alignment with the active question; gives a falsifiable model-complexity versus logical-error result and can use B-D as stress tests. |
+| 2 | B. History-conditioned temporal fusion | BACKUP | Most directly targets detector history, but realistic parameter calibration and state expansion are uncertain. |
+| 3 | C. Visibility-equivalent multimode stress test | CONDITIONAL | Important and sharply differentiated, but multimode modeling and novelty verification are difficult. |
+| 4 | D. Leakage persistence and reset sufficiency | VALIDATION CASE | High importance but encoding-specific and closest to existing leakage-QEC literature. |
+
+**Primary project:** Candidate A, with B as the first optional extension only after the static primitive is validated. The first paper claim should be:
+
+> For one explicitly specified photonic fusion primitive, the independent-erasure abstraction is (or is not) sufficient over a stated calibration regime; when it is not, we quantify the smallest richer detector-error model that predicts held-out logical observables.
+
+This wording deliberately allows a negative result and does not claim that the compiler is universal or that the mechanism has never been studied.
+
+## 22.7 Concrete next-step protocol
+
+### Phase 0 - Literature and definitions freeze
+
+1. Build a citation matrix with columns: primitive, encoding, physical noise, detector model, logical circuit, decoder, metric, and whether the paper uses microscopic optical modes or phenomenological parameters.
+2. Search the exact combination "photonic fusion + detector error model + logical error" and the reference lists of Chan, Meng, Yard, Sahay, and Zhang. Record an explicit duplicate check before using the word novel.
+3. Fix one primitive: a dual-rail two-mode 50/50 fusion with a stated success/failure convention. Fix one detector model, one feed-forward/reset convention, one small stabilizer circuit, one decoder, one primary tolerance `epsilon`, and one held-out parameter region.
+4. State in methods whether a full microscopic sample is injected into a custom decoder or whether Stim is used only for the reduced model. Do not silently treat a non-graphlike physical distribution as a DEM.
+
+### Phase 1 - Microscopic reference validation
+
+1. Implement vacuum, one-photon, and two-photon sectors first; add loss, mode overlap, detector efficiency, dark counts, and timing only after limiting cases pass.
+2. Check Fock cutoff convergence, probability normalization, symmetry under exchange of identical inputs, zero-loss/perfect-detection limits, and Monte Carlo confidence intervals.
+3. Store conditional records, not only aggregate fusion success: optical outcome, click pattern, time bin, mode label if resolved, and latent source sector.
+
+### Phase 2 - Nested reductions
+
+Fit or calculate four reductions from a training region: independent erasure; erasure plus measurement flip; pair-correlated graphlike model; and a latent/history-conditioned model. Keep model parameters derived from the training records and never refit them on the held-out region.
+
+### Phase 3 - Logical comparison
+
+Run matched rounds and distances in Stim for each reduced model. Decode with PyMatching under correctly calibrated and deliberately mismatched weights. For the physical reference, use direct conditional-record sampling and the same logical-observable convention. Report `P_L`, syndrome-distribution distance, decoder ranking, confidence intervals, model size, and runtime.
+
+### Phase 4 - Stress tests and boundary search
+
+Sweep one physical parameter at a time and then a small factorial design. Locate the first boundary where the simpler model exceeds `epsilon`. Test whether the boundary survives detector choice, code distance, number of rounds, and an independent random seed. If an error mechanism has more than two detection events, compare direct sampling with Stim's decomposition rather than assuming equivalence.
+
+### Phase 5 - Stop/go decision
+
+Go to the paper-scale study only if (a) the microscopic reference is converged, (b) the optical-to-logical convention is reproducible, and (c) at least one simpler abstraction fails on held-out data while a richer model passes. Stop or publish a negative result if every justified model agrees, if the difference is below estimable uncertainty, or if a targeted duplicate search finds the same primitive, metric, and conclusion.
+
+## 22.8 Unresolved literature questions
+
+1. Has any primary paper already compared a microscopic photonic fusion record with a reduced DEM using held-out logical observables, rather than merely inserting phenomenological loss or distinguishability into a threshold calculation?
+2. In Chan et al.'s emitter-tailored model, which optical statistics are retained and which are discarded before the logical threshold calculation?
+3. Do the temporal-fusion measurements of Meng et al. provide enough time-correlated data to parameterize a finite-state detector/source history model, or only a two-photon interference metric?
+4. Are realistic dead-time, afterpulse, timing-jitter, and number-resolution parameters reported for the detectors assumed in current FBQC threshold studies?
+5. Under what detector assumptions does a two-photon or vacuum event become a heralded erasure versus a hidden measurement fault in the dual-rail encoding used by the target architecture?
+6. Can Strawberry Fields represent the required spectral/temporal density matrix and detector coarse-graining without a discretization that changes the conclusion? If not, what custom optical reference should be used?
+7. For the selected physical distribution, is a multi-detector DEM mechanism an exact description, or only a list of independent sampled events? What error is introduced by `decompose_errors=True` before PyMatching?
+8. Can a finite-state detector history be represented by an augmented Clifford circuit without changing the causal meaning of the optical record, or is a custom sampler unavoidable?
+9. Do decoder-adaptation methods such as DGR or data-centric circuit decoders improve the result enough that the research question becomes calibration rather than model reduction?
+10. Which experimentally measured ranges of `g2`, loss, mode overlap, timing jitter, and detector efficiency make the predicted discrepancy large enough to estimate with feasible shots?
+11. Is the correct sufficiency target logical failure probability, the full syndrome distribution, decoder ranking, threshold estimate, or a vector of all four? A single metric can hide a wrong mechanism.
+12. Does a negative result - that a small statistic set is sufficient for one primitive - transfer to another fusion network, or should transferability itself be the paper's main endpoint?
+
+**Bottom line:** the active idea survives, but only as a bounded, falsifiable model-reduction study. The literature supports the physical importance of loss, fusion bias, timing, distinguishability, source construction, and detector-aware decoding. It does not yet, on the evidence checked here, establish the proposed sufficiency maps or a universal microscopic-to-logical compiler. That novelty boundary remains uncertain and must be rechecked before a manuscript or public claim.
